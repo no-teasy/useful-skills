@@ -1,0 +1,73 @@
+{
+  "tasks": [
+    {
+      "id": "task-1",
+      "description": "修复用户认证模块的bug - 解决登录时的会话管理问题",
+      "work_dir": "C:/Users/Administrator/project/src/auth",
+      "permissions": [
+        "/src/auth/*",
+        "/tests/auth/*"
+      ],
+      "type": "bug_fix",
+      "priority": "high",
+      "requirements": [
+        "修复会话超时问题",
+        "确保安全的令牌管理",
+        "保持向后兼容性"
+      ],
+      "expected_output": "通过所有认证相关测试，提高会话管理安全性",
+      "constraints": [
+        "不能修改API接口",
+        "只能在auth目录内修改代码"
+      ]
+    },
+    {
+      "id": "task-2", 
+      "description": "优化数据库查询性能 - 改进用户数据检索效率",
+      "work_dir": "C:/Users/Administrator/project/src/database",
+      "permissions": [
+        "/src/database/*",
+        "/src/models/*"
+      ],
+      "type": "optimization",
+      "priority": "medium",
+      "requirements": [
+        "减少查询响应时间",
+        "优化SQL查询语句",
+        "添加适当的索引"
+      ],
+      "expected_output": "查询性能提升至少30%，减少数据库负载",
+      "constraints": [
+        "不能更改表结构",
+        "保持数据完整性"
+      ]
+    },
+    {
+      "id": "task-3",
+      "description": "实现新的数据导出功能 - 添加CSV导出选项",
+      "work_dir": "C:/Users/Administrator/project/src/export",
+      "permissions": [
+        "/src/export/*",
+        "/src/utils/*"
+      ],
+      "type": "feature",
+      "priority": "medium",
+      "requirements": [
+        "实现CSV文件生成",
+        "支持大数据量分批处理",
+        "确保数据格式正确"
+      ],
+      "expected_output": "可生成符合规范的CSV文件，支持大文件导出",
+      "constraints": [
+        "遵循现有导出模块架构",
+        "保持代码风格一致"
+      ]
+    }
+  ],
+  "config": {
+    "max_parallel_agents": 3,
+    "timeout_per_agent": 3600,
+    "report_format": "detailed",
+    "conflict_resolution": "auto"
+  }
+}

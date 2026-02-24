@@ -1,0 +1,30 @@
+{
+  "tasks": [
+    {
+      "id": "task-template-001",
+      "description": "任务描述 - 请替换为具体任务内容",
+      "work_dir": "/path/to/work/directory",
+      "permissions": [
+        "/src/module1/*",
+        "/tests/module1/*"
+      ],
+      "type": "bug_fix",
+      "priority": "high",
+      "requirements": [
+        "具体任务要求1",
+        "具体任务要求2"
+      ],
+      "expected_output": "期望的输出格式或结果",
+      "constraints": [
+        "约束条件1",
+        "约束条件2"
+      ]
+    }
+  ],
+  "config": {
+    "max_parallel_agents": 5,
+    "timeout_per_agent": 3600,
+    "report_format": "detailed",
+    "conflict_resolution": "auto"
+  }
+}

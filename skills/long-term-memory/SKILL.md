@@ -1,173 +1,169 @@
 ---
 name: long-term-memory
-description: 长期记忆管理系统，将 AI 助手的记忆、用户偏好、重要对话、业务知识等信息写入不同的 markdown 文件，并在每次对话开始时自动读取。适用于日常办公、客服咨询、生活助手等多种场景，实现跨会话的个性化服务。
+description: Use when users want to maintain persistent memory across sessions, track user preferences, store important decisions, manage tasks and reminders, or provide personalized service with cross-session context.
 ---
 
-# 长期记忆管理系统
+# 长期记忆管理
 
-> **技能定位**：让 AI 助手拥有跨会话的持久化记忆能力，记住用户信息、偏好、历史交互和重要事项，提供个性化、连续性的智能服务。
+## Overview
 
-> **核心要求**：**AI 第一次调用时必须使用 `--mode all` 加载所有记忆！**
+让 AI 助手拥有跨会话的持久化记忆能力，记住用户信息、偏好、历史交互和重要事项，提供个性化、连续性的智能服务。
 
----
+**核心原则**：
+- 第一次对话必须加载全部记忆（`--mode all`）
+- 对话中时刻识别可记录信息
+- 主动管理记忆（更新、删除、关联、搜索）
 
-## ⚠️ 强制性指令（最高优先级）
+## When to Use
 
-### 指令 1：第一次对话必须加载全部记忆
+**使用此技能当**：
+- 用户提到个人信息（职业、地点、家庭情况）
+- 用户表达偏好（沟通风格、输出格式）
+- 用户做出重要决定或承诺
+- 用户提到待办事项或提醒
+- 用户分享知识经验或业务规则
+- 需要跨会话的上下文连续性
 
-**AI 第一次调用记忆系统时，必须首先使用 --mode all 加载所有记忆！**
+**不使用**：
+- 一次性对话，无需后续跟进
+- 纯技术性、无个人化需求的问题
+- 配置未完成时（先引导配置）
+
+## Quick Reference
+
+| 任务 | 命令 |
+|------|------|
+| **首次加载** | `python scripts/load_context.py --mode all` |
+| **语义搜索** | `python scripts/load_context.py --mode all --query "关键词"` |
+| **添加长期记忆** | `python scripts/manage_memories.py add --file <文件> --title "标题" --content "内容"` |
+| **搜索长期记忆** | `python scripts/manage_memories.py search --query "关键词"` |
+| **更新长期记忆** | `python scripts/manage_memories.py update --file <文件> --title "标题" --content "新内容"` |
+| **删除长期记忆** | `python scripts/manage_memories.py delete --file <文件> --title "标题"` |
+| **添加短期记忆** | `python scripts/manage_short_term.py add --content "内容" --agent chat` |
+| **查看今天记忆** | `python scripts/manage_short_term.py show` |
+| **向量搜索** | `python scripts/vector_store.py query --query "关键词" --top-k 5` |
+| **检查配置** | `python scripts/setup_check.py` |
+
+## Core Workflow
+
+### 1. 首次对话 - 加载全部记忆（强制性）
 
 ```bash
 python scripts/load_context.py --mode all
 ```
 
-**这是强制性的，没有例外！**
+**执行流程**：
+1. 检测用户第一条消息
+2. 运行加载命令
+3. 自动归档过期短期记忆（>24 小时）
+4. 加载长期记忆 + 当天短期记忆
+5. 总结记忆要点
+6. 根据记忆调整交互方式
+7. 开始回复
 
-**原因**：
-- 长期记忆包含用户偏好、个人信息、重要决定
-- 当天短期记忆包含临时对话上下文
-- 两者结合才能完整了解用户背景
+**内心独白示例**：
+> "加载完成，共 13 条长期记忆，2 条当天短期记忆。
+> 用户是产品经理，在北京工作，喜欢简洁回复。
+> 今天用户说要去体检。
+> 好的，现在可以开始回复了。"
 
-**加载内容**：
-- 长期记忆（5 个文件，全量加载）
-- 当天短期记忆（自动加载未归档的）
-- 过期短期记忆（>24 小时）自动归档，不加载
+**不加载记忆就回复是严重错误！**
 
-**向量搜索**：
-- 使用 `--mode vector --query "关键词"` 进行语义搜索
-- 或在 `--mode all` 基础上添加 `--query "关键词"`
-- **永远不会加载所有向量记忆**，必须指定查询关键词
+### 2. 对话中 - 无感记录
 
-### 指令 2：积极识别可记录信息
+**核心原则**：默默记录，不要打断对话流程
 
-**在对话过程中，时刻保持警惕，识别任何值得记录的信息：**
+**使用场景**：
+- **长期记忆**：用户偏好、个人信息、重要决定、知识经验 → 使用 `manage_memories.py`
+- **短期记忆**：当天临时信息、待跟进事项、Agent 间消息 → 使用 `manage_short_term.py`
 
-| 信息类型 | 用户表达示例 | 应记录到 |
-|----------|--------------|----------|
-| **个人信息** | "我是产品经理"、"我在北京"、"我家孩子 5 岁" | user-profile.md |
-| **偏好声明** | "我喜欢简洁的回复"、"用表格展示" | user-preferences.md |
-| **重要决定** | "我决定选 A"、"下周开始执行" | decisions-context.md |
-| **待办事项** | "记得提醒我"、"下周三前要完成" | tasks-reminder.md |
-| **知识经验** | "这个流程是..."、"需要注意的是..." | knowledge-base.md |
-
-**识别后，立即向用户确认并记录，不要等到对话结束！**
-
-### 指令 3：主动管理记忆
-
-**不仅仅是记录，还要主动管理：**
-
-- **更新**：发现信息变化时，主动更新旧记忆
-- **删除**：发现过期信息时，主动建议删除
-- **关联**：发现记忆间关系时，主动建立链接
-- **搜索**：用户提及相关话题时，主动搜索已有记忆
-
----
-
-## 快速开始
-
-### 1. 检查配置状态（首次使用）
-
-首次使用时，运行配置检查：
-
-```bash
-cd skills/long-term-memory
-python scripts/check_config.py --status
+```
+用户输入 → 识别可记录信息 → 后台记录 → 继续正常对话
 ```
 
-### 2. 配置环境变量（首次使用）
+**识别模式**：
 
-**AI 引导配置**：
+| 信息类型 | 用户表达示例 | 记录到 | 记忆类型 |
+|----------|--------------|--------|----------|
+| 个人信息 | "我是产品经理"、"我在北京" | user-profile.md | 长期 |
+| 偏好声明 | "我喜欢简洁回复"、"用表格" | user-preferences.md | 长期 |
+| 重要决定 | "我决定选 A"、"下周执行" | decisions-context.md | 长期 |
+| 待办事项 | "记得提醒我"、"周三前完成" | tasks-reminder.md | 长期 |
+| 知识经验 | "这个流程是..."、"注意..." | knowledge-base.md | 长期 |
+| 临时信息 | "下周要搬家"、"上午有体检" | 短期记忆文件 | 短期 |
+| Agent 消息 | "告诉健康助手用户要体检" | 短期记忆文件 | 短期 |
 
-第一次使用时，AI 会自动引导你完成配置。或者手动运行：
-
-```bash
-python scripts/check_config.py --guide
+**正确做法**：
+```
+用户：我是做产品经理的，平时工作比较忙
+      ↓
+AI：（后台运行 manage_memories.py add --file user-profile.md ...）
+    那您平时喜欢怎么放松呢？
 ```
 
-配置过程中需要填写：
-- **OPENAI_API_KEY**（必填）- OpenAI API 密钥
-- **OPENAI_BASE_URL**（可选）- 自定义 API 地址
-- **OPENAI_EMBEDDING_MODEL**（可选）- 嵌入模型名称
-
-配置完成后会自动创建 `configured.txt` 标记文件。
-
-### 3. 安装依赖
-
-```bash
-pip install -r requirements.txt
+**错误做法**：
+```
+❌ AI：我记一下，您是产品经理对吗？好的已记录...
+   （打断对话，破坏体验）
 ```
 
-### 4. 初始化向量库
+**不要询问确认！不要告诉用户你在记录！默默记录，继续对话！**
 
-```bash
-python scripts/vector_store.py init
-python scripts/vector_store.py sync
+### 3. 短期记忆到期评估
+
+**时机**：每次加载记忆时，检查昨天的短期记忆（即将归档）
+
+**核心原则**：AI 自主评估，自主决定，无需询问用户
+
+**评估流程**：
+```
+检查昨天短期记忆 → AI 自主识别有价值内容 → 自动转入长期记忆 → 继续对话
 ```
 
-### 5. 测试配置
+**评估标准**（满足任一即应转入长期）：
+- ✅ 用户偏好或习惯（如"我喜欢简洁回复"）
+- ✅ 重要个人信息（如"准备考 PMP 证书"、"搬到新地址"）
+- ✅ 长期待办或承诺（如"每周健身 3 次"）
+- ✅ 重要知识或经验（如"工作流中的关键步骤"）
+- ❌ 临时性信息（已完成的、一次性的）→ 让其自然归档
+
+**示例**：
+```
+用户：（昨天说过）我准备考 PMP 证书，已经报名了
+      ↓
+AI：（后台检查短期记忆，识别为重要个人发展计划）
+    （自动运行 manage_memories.py add --file tasks-reminder.md ...）
+    （继续正常对话，不提及转移操作）
+```
+
+**完全无感！不要询问！不要告诉用户！AI 自主决定，自动转移！**
+
+### 4. 后续对话 - 按需加载
 
 ```bash
+# 默认模式（长期 + 当天短期 + 检查昨天记忆）
 python scripts/load_context.py --mode all
+
+# 语义搜索（附加向量检索）
+python scripts/load_context.py --mode all --query "旅行"
+
+# 仅向量搜索
+python scripts/load_context.py --mode vector --query "旅行"
 ```
 
-**🆕 新用户？** 参考 [SETUP_GUIDE.md](SETUP_GUIDE.md) 获取完整配置帮助。
+## Memory System
 
----
+### 长期记忆 vs 短期记忆
 
-## 配置说明
+| 特性 | 长期记忆 | 短期记忆 |
+|------|----------|----------|
+| **用途** | 持久化信息（偏好、个人信息、知识） | 临时信息（当天对话、临时待办） |
+| **保留时间** | 永久保存，手动删除 | 24 小时后归档，30 天后删除 |
+| **组织方式** | 按类别分 5 个文件 | 按日期分文件（`2026-03-11.md`） |
+| **加载方式** | 每次对话全量加载 | 自动加载当天文件 |
+| **典型内容** | "我喜欢简洁回复"、"我是产品经理" | "用户说下周要搬家"、"上午有体检" |
 
-### 环境变量配置
-
-创建 `.env` 文件（在技能目录下），配置以下环境变量：
-
-```bash
-# OpenAI API 配置
-OPENAI_API_KEY=sk-your-api-key-here
-OPENAI_BASE_URL=https://api.openai.com/v1          # 可选，自定义 API 地址
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small      # 可选，自定义嵌入模型
-
-# 或者使用兼容 OpenAI API 的其他服务
-# 例如使用 Azure OpenAI、本地部署的模型等
-OPENAI_BASE_URL=https://your-custom-endpoint.com/v1
-```
-
-**配置说明**：
-- `OPENAI_API_KEY` - **必填**，OpenAI API 密钥
-- `OPENAI_BASE_URL` - 可选，自定义 API 基础 URL（默认使用 OpenAI 官方）
-- `OPENAI_EMBEDDING_MODEL` - 可选，嵌入模型名称（默认 `text-embedding-3-small`）
-
-### 配置管理命令
-
-```bash
-# 检查配置状态
-python scripts/check_config.py --status
-
-# 引导配置（交互式）
-python scripts/check_config.py --guide
-
-# 重置配置（删除标记文件）
-python scripts/check_config.py --reset
-
-# 仅检查配置（用于脚本）
-python scripts/check_config.py
-```
-
-### 配置完成标记
-
-配置完成后会自动创建 `configured.txt` 文件，用于标识配置已完成。
-
-- **存在** `configured.txt` - 配置已完成，不会再次引导
-- **不存在** `configured.txt` - 配置未完成，AI 会引导配置
-
-如需重新配置，运行：
-```bash
-python scripts/check_config.py --reset
-python scripts/check_config.py --guide
-```
-
----
-
-## 记忆文件结构
+### 长期记忆文件（5 个）
 
 ```
 memories/
@@ -176,6 +172,31 @@ memories/
 ├── decisions-context.md     # 重要决定和上下文
 ├── tasks-reminder.md        # 待办事项和提醒
 └── knowledge-base.md        # 知识和经验积累
+```
+
+### 短期记忆文件（按日期）
+
+```
+short-term/
+├── 2026-03-11.md              # 今天的短期记忆
+├── 2026-03-10.md              # 昨天的（待归档）
+└── archived/                  # 归档目录（30 天后清理）
+```
+
+**自动归档**：每次运行 `load_context.py --mode all` 时自动检查并归档>24 小时的文件。
+
+### 向量记忆（语义搜索）
+
+**用途**：存储短期记忆的向量，支持语义搜索（搜"体检"也能找到"医院检查"）。
+
+**注意**：长期记忆已全量加载到上下文，不需要向量化。
+
+```bash
+# 语义搜索
+python scripts/load_context.py --mode all --query "旅行"
+
+# 仅向量搜索
+python scripts/load_context.py --mode vector --query "旅行"
 ```
 
 ### 记忆条目格式
@@ -193,191 +214,26 @@ memories/
 <!-- @end -->
 ```
 
----
+### 各类记忆示例
 
-## 行为指令（强制执行）
-
-### 步骤 1：第一次对话 - 必须加载全部记忆
-
-**这是强制性的第一步，没有例外！**
-
-```
-┌─────────────────────────────────────────────────┐
-│  1. 检测用户第一条消息                           │
-│  2. 运行 python scripts/load_context.py --mode all   │
-│  3. 自动归档过期短期记忆（>24 小时）               │
-│  4. 加载长期记忆 + 当天短期记忆                   │
-│  5. 在内心总结记忆要点                           │
-│  6. 根据记忆调整交互方式                         │
-│  7. 开始回复用户                                 │
-└─────────────────────────────────────────────────┘
-```
-
-**执行示例：**
-```bash
-# 第一步：加载全部记忆（必须！）
-python scripts/load_context.py --mode all
-```
-
-**内心独白示例（读取后）：**
-> "加载完成，共 13 条长期记忆，2 条当天短期记忆。
-> 用户是产品经理，在北京工作，喜欢简洁回复。
-> 五一计划去日本旅行，酒店已订。
-> 今天用户说要去体检。
-> 好的，我了解了，现在可以开始回复用户了。"
-
-**不加载记忆就回复是严重错误！**
-
-### 步骤 2：后续对话 - 根据需要加载
-
-**根据对话内容，选择合适的加载模式：**
-
-```bash
-# 默认模式（长期 + 当天短期）
-python scripts/load_context.py --mode all
-
-# 仅向量搜索（语义检索）
-python scripts/load_context.py --mode vector --query "旅行"
-
-# 长期 + 短期 + 向量搜索
-python scripts/load_context.py --mode all --query "旅行"
-
-# 加载完整内容
-python scripts/load_context.py --mode all --full
-```
-
-### 步骤 3：对话中 - 时刻保持警惕
-
-**在对话的每一句话中，都要思考：这个信息值得记录吗？**
-
-**识别→确认→记录 流程：**
-
-```
-用户输入
-    ↓
-是否包含可记录信息？
-    ├─ 是 → 属于哪一类？ → 向用户确认 → 立即记录
-    └─ 否 → 继续正常对话
-```
-
-**实时识别示例：**
-
-```
-用户：我是做产品经理的，平时工作比较忙
-      ↑
-      └─ "我是做产品经理的" → 个人信息 → 记录到 user-profile.md
-
-AI：我记一下，您是产品经理，工作比较忙对吗？
-     （运行 manage_memories.py add --file user-profile.md ...）
-     好的，已记录。那您平时喜欢怎么放松呢？
-```
-
-**不要等到对话结束才记录！当下识别，当下记录！**
-
----
-
-## 常用命令
-
-### 记忆加载
-
-```bash
-# 加载长期记忆 + 当天短期记忆
-python scripts/load_context.py --mode all
-
-# 仅向量搜索（语义检索）
-python scripts/load_context.py --mode vector --query "关键词"
-
-# 长期 + 短期 + 向量搜索
-python scripts/load_context.py --mode all --query "关键词"
-
-# 加载完整内容
-python scripts/load_context.py --mode all --full
-```
-
-### 记忆管理
-
-```bash
-# 添加长期记忆
-python scripts/manage_memories.py add --file user-preferences.md --title "标题" --content "内容" --tags "标签"
-
-# 搜索记忆
-python scripts/manage_memories.py search --query "关键词"
-
-# 列出所有记忆
-python scripts/manage_memories.py list
-
-# 更新记忆
-python scripts/manage_memories.py update --file user-preferences.md --title "标题" --content "新内容"
-
-# 删除记忆
-python scripts/manage_memories.py delete --file user-preferences.md --title "标题"
-```
-
-### 短期记忆
-
-```bash
-# 添加短期记忆
-python scripts/manage_short_term.py add --content "内容" --agent chat
-
-# 查看今天记忆
-python scripts/manage_short_term.py show
-
-# 添加待跟进
-python scripts/manage_short_term.py followup --item "事项"
-
-# Agent 间消息
-python scripts/manage_short_term.py message --from chat --to health --content "消息"
-```
-
-### 向量记忆
-
-```bash
-# 初始化向量库
-python scripts/vector_store.py init
-
-# 同步短期记忆
-python scripts/vector_store.py sync
-
-# 添加记忆
-python scripts/vector_store.py add --content "内容" --source "来源"
-
-# 查询记忆（语义搜索）
-python scripts/vector_store.py query --query "关键词" --top-k 5
-
-# 统计信息
-python scripts/vector_store.py stats
-```
-
----
-
-## 记忆类别说明
-
-### user-preferences.md
-
-**用途**：存储用户的工作方式、编码风格、工具偏好等
-
-**示例**：
+**user-preferences.md**：
 ```markdown
 ## 沟通风格偏好
 
-<!-- @meta category: preferences | tags: 沟通风格，输出格式 | created: 2026-03-11 | updated: 2026-03-11 -->
+<!-- @meta category: preferences | tags: 沟通风格，输出格式 | created: 2026-03-11 -->
 
 - 回复风格：简洁直接，避免冗长解释
-- 输出格式：优先使用表格和列表展示信息
-- 语言风格：专业但友好，避免过于正式
+- 输出格式：优先使用表格和列表
+- 语言风格：专业但友好
 
 <!-- @end -->
 ```
 
-### user-profile.md
-
-**用途**：记录用户的基本信息、职业背景、家庭情况等
-
-**示例**：
+**user-profile.md**：
 ```markdown
 ## 职业背景
 
-<!-- @meta category: profile | tags: 职业，工作，背景 | created: 2026-03-11 | updated: 2026-03-11 -->
+<!-- @meta category: profile | tags: 职业，工作 | created: 2026-03-11 -->
 
 - 职业：产品经理
 - 行业：互联网/科技
@@ -386,185 +242,79 @@ python scripts/vector_store.py stats
 <!-- @end -->
 ```
 
-### decisions-context.md
-
-**用途**：记录用户做出的重要决定、选择方案及决策原因
-
-**示例**：
-```markdown
-## 旅行方案决策
-
-<!-- @meta category: decisions | tags: 旅行，决策，计划 | created: 2026-03-05 | updated: 2026-03-05 -->
-
-**决定内容**：五一假期选择日本关西旅行
-
-**决策原因**：
-1. 飞行时间短（3 小时），适合带孩子出行
-2. 文化相近，饮食适应
-3. 预算适中，人均约 15000 元
-
-<!-- @end -->
-```
-
-### tasks-reminder.md
-
-**用途**：记录待办事项、提醒事项、承诺跟进等
-
-**示例**：
+**tasks-reminder.md**：
 ```markdown
 ## 孩子疫苗接种提醒
 
-<!-- @meta category: tasks | tags: 提醒，家庭，健康 | created: 2026-03-10 | updated: 2026-03-10 -->
+<!-- @meta category: tasks | tags: 提醒，健康 | created: 2026-03-10 -->
 
 **提醒事项**：带孩子接种百白破疫苗第三针
-
 **截止日期**：2026-03-25
-
 **优先级**：高
 
 <!-- @end -->
 ```
 
-### knowledge-base.md
+## Common Mistakes
 
-**用途**：存储领域特定知识、业务规则、专业概念等
+| 错误 | 正确做法 |
+|------|----------|
+| ❌ 忘记首次加载记忆 | ✅ 第一条消息后立即运行 `--mode all` |
+| ❌ 等到对话结束才记录 | ✅ 识别后立即后台记录 |
+| ❌ 询问用户确认 | ✅ 默默记录，不打断对话 |
+| ❌ 告诉用户"我已记录" | ✅ 继续对话，不提及记录 |
+| ❌ 加载所有向量记忆 | ✅ 向量搜索必须指定 `--query` 关键词 |
+| ❌ 忽略记忆管理 | ✅ 主动更新、删除、关联、搜索 |
+| ❌ 询问用户是否转移 | ✅ AI 自主评估，自动转移 |
+| ❌ 告诉用户"我转储记忆" | ✅ 默默转移，不提及操作 |
 
-**示例**：
-```markdown
-## 签证申请流程（日本）
+## Red Flags - STOP
 
-<!-- @meta category: knowledge | tags: 签证，日本，流程 | created: 2026-03-05 | updated: 2026-03-05 -->
+- 准备回复用户但还没加载记忆 → **STOP，先加载**
+- 想"等会儿再记录" → **STOP，立即记录**
+- 想告诉用户"我记一下" → **STOP，默默记录**
+- 想询问确认"您是...对吗？" → **STOP，直接记录**
+- 想询问"要转入长期记忆吗" → **STOP，自主决定，直接转移**
+- 想告诉用户"我已转移记忆" → **STOP，保持沉默**
 
-**所需材料**：
-1. 护照原件（有效期 6 个月以上）
-2. 签证申请表（照片 4.5cm×4.5cm）
-3. 在职证明
-4. 银行流水（近 6 个月）
-5. 行程单
+## Configuration
 
-**办理流程**：
-1. 准备材料 → 2. 提交旅行社 → 3. 等待审核（5-7 工作日）→ 4. 领取签证
-
-<!-- @end -->
-```
-
----
-
-## 短期记忆系统
-
-> 短期记忆用于记录 24 小时内的临时信息，支持多个 Agent 之间共享上下文。超过 24 小时自动归档，30 天后自动删除。
-
-### 短期记忆 vs 长期记忆
-
-| 特性 | 长期记忆 | 短期记忆 |
-|------|----------|----------|
-| **用途** | 持久化信息 | 临时信息、Agent 间消息 |
-| **保留时间** | 永久保存，手动删除 | 24 小时后归档，30 天后删除 |
-| **组织方式** | 按类别分文件 | 按日期分文件（如 `2026-03-11.md`） |
-| **典型内容** | 偏好设置、个人信息、知识库 | 对话记录、临时待办、Agent 消息 |
-
-### 短期记忆结构
-
-```
-short-term/
-├── 2026-03-11.md              # 今天的短期记忆
-├── 2026-03-10.md              # 昨天的（待归档）
-└── archived/                  # 归档目录（30 天后清理）
-    ├── 2026-03-09.md
-    └── ...
-```
-
-**自动归档**：每次运行 `load_context.py --mode all` 时自动检查并归档过期文件。
-
----
-
-## 向量记忆系统
-
-> 向量记忆仅存储短期记忆的向量，用于语义搜索。**长期记忆默认全量加载到上下文，不需要向量化。**
-
-### 为什么只向量化短期记忆？
-
-| 记忆类型 | 加载方式 | 是否需要向量 |
-|----------|----------|--------------|
-| **长期记忆** | 每次对话全量加载 | ❌ 不需要，已在上下文中 |
-| **短期记忆** | 按需检索 | ✅ 需要，支持语义搜索 |
-
-### 向量记忆 vs 传统搜索
-
-| 特性 | 传统关键词搜索 | 向量语义搜索 |
-|------|----------------|--------------|
-| **原理** | 文本匹配 | 向量相似度 |
-| **优势** | 精确匹配关键词 | 理解语义，同义词也能搜到 |
-| **示例** | 搜"体检"只能找到"体检" | 搜"体检"也能找到"医院检查" |
-
-### 环境变量配置
-
+**检查配置状态**：
 ```bash
-# .env 文件
-OPENAI_API_KEY=sk-your-api-key-here
-OPENAI_BASE_URL=https://api.openai.com/v1          # 可选
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small      # 可选
+python scripts/check_config.py --status
 ```
 
-**详细配置说明**：参考 [SETUP_GUIDE.md](SETUP_GUIDE.md)
+**配置完成后会创建** `configured.txt` **文件**：
+- 存在 → 配置完成，不会再次引导
+- 不存在 → 配置未完成，AI 会引导配置
 
----
+**重新配置**：
+```bash
+python scripts/check_config.py --reset
+python scripts/check_config.py --guide
+```
 
-## 相关文件
-
-### 核心文档
-- [SETUP_GUIDE.md](SETUP_GUIDE.md) - 完整配置向导（环境检查、依赖安装、.env 配置）
-- [assets/memory_template.md](assets/memory_template.md) - 记忆条目的完整模板
-
-### 脚本文件
-- `scripts/load_context.py` - 统一记忆加载（AI 主要使用）
-- `scripts/manage_memories.py` - 长期记忆管理
-- `scripts/manage_short_term.py` - 短期记忆管理
-- `scripts/vector_store.py` - 向量存储管理
-- `scripts/search_memories.py` - 统一搜索
-- `scripts/setup_check.py` - 配置检查工具
-
-### 参考文档
-- `references/linking.md` - 记忆间双向链接的详细指南
-- `references/example_memories.md` - 各类记忆的完整示例
-
----
-
-## 配置检查
-
-运行配置检查脚本验证安装：
-
+**验证安装**：
 ```bash
 python scripts/setup_check.py
 ```
 
-**预期输出**：
-```
-============================================================
-                    🔧 记忆系统配置检查
-============================================================
+## Related Files
 
-✅ Python 版本：3.13.12
-✅ pip 版本：26.0.1
-✅ 目录正确
-✅ .env 文件存在
-  OPENAI_API_KEY 已配置：sk-***
-✅ ChromaDB 已安装
-✅ OpenAI 已安装
-✅ python-dotenv 已安装
-✅ 向量库目录存在
-✅ 长期记忆目录存在
-  找到 5 个记忆文件
-✅ 短期记忆目录存在
+**核心文档**：
+- [SETUP_GUIDE.md](SETUP_GUIDE.md) - 完整配置向导
+- [assets/memory_template.md](assets/memory_template.md) - 记忆条目模板
 
-============================================================
-                       检查结果
-============================================================
+**脚本文件**：
+- `scripts/load_context.py` - 统一记忆加载
+- `scripts/manage_memories.py` - 长期记忆管理
+- `scripts/manage_short_term.py` - 短期记忆管理
+- `scripts/vector_store.py` - 向量存储管理
 
-通过：7/7
-✅ 配置完成，可以开始使用！
-```
+**参考文档**：
+- `references/linking.md` - 记忆间双向链接
+- `references/example_memories.md` - 记忆示例
 
 ---
 
-*详细使用说明请参考：[references/usage.md](references/usage.md)*
+*详细使用说明：[references/usage.md](references/usage.md)*

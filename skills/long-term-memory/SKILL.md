@@ -10,7 +10,7 @@ description: Use when users want to maintain persistent memory across sessions, 
 让 AI 助手拥有跨会话的持久化记忆能力，记住用户信息、偏好、历史交互和重要事项，提供个性化、连续性的智能服务。
 
 **核心原则**：
-- 第一次对话必须加载全部记忆（`--mode all`）
+- 第一次对话必须先检查配置状态 → 引导配置 → 加载全部记忆
 - 对话中时刻识别可记录信息
 - 主动管理记忆（更新、删除、关联、搜索）
 
@@ -27,12 +27,13 @@ description: Use when users want to maintain persistent memory across sessions, 
 **不使用**：
 - 一次性对话，无需后续跟进
 - 纯技术性、无个人化需求的问题
-- 配置未完成时（先引导配置）
 
 ## Quick Reference
 
 | 任务 | 命令 |
 |------|------|
+| **检查配置** | `python scripts/check_config.py` |
+| **引导配置** | `python scripts/check_config.py --guide` |
 | **首次加载** | `python scripts/load_context.py --mode all` |
 | **语义搜索** | `python scripts/load_context.py --mode all --query "关键词"` |
 | **添加长期记忆** | `python scripts/manage_memories.py add --file <文件> --title "标题" --content "内容"` |
@@ -42,32 +43,62 @@ description: Use when users want to maintain persistent memory across sessions, 
 | **添加短期记忆** | `python scripts/manage_short_term.py add --content "内容" --agent chat` |
 | **查看今天记忆** | `python scripts/manage_short_term.py show` |
 | **向量搜索** | `python scripts/vector_store.py query --query "关键词" --top-k 5` |
-| **检查配置** | `python scripts/setup_check.py` |
+| **验证安装** | `python scripts/setup_check.py` |
 
 ## Core Workflow
 
-### 1. 首次对话 - 加载全部记忆（强制性）
+### 1. 首次对话 - 检查配置 → 引导配置 → 加载全部记忆（强制性）
 
+**执行流程**：
+```
+检测用户第一条消息
+    ↓
+检查配置状态（必须！）
+    ├─ 未配置 → 引导用户配置 → 配置完成后加载记忆
+    └─ 已配置 → 直接加载全部记忆
+```
+
+**第一步：检查配置状态**
+```bash
+python scripts/check_config.py
+```
+
+**配置状态判断**：
+- ✅ **存在** `configured.txt` → 配置已完成
+- ❌ **不存在** `configured.txt` → 配置未完成，必须引导用户
+
+**第二步：引导配置（如未完成）**
+```bash
+python scripts/check_config.py --guide
+```
+
+**引导时向用户说明**：
+> "我发现记忆系统还没配置，我帮您快速配置一下。请按照提示操作。"
+
+**第三步：加载全部记忆（配置完成后）**
 ```bash
 python scripts/load_context.py --mode all
 ```
 
-**执行流程**：
+**完整加载流程**：
 1. 检测用户第一条消息
-2. 运行加载命令
-3. 自动归档过期短期记忆（>24 小时）
-4. 加载长期记忆 + 当天短期记忆
-5. 总结记忆要点
-6. 根据记忆调整交互方式
-7. 开始回复
+2. **先检查配置状态**
+3. 如未配置→引导配置
+4. 运行加载命令
+5. 自动归档过期短期记忆（>24 小时）
+6. 加载长期记忆 + 当天短期记忆
+7. 总结记忆要点
+8. 根据记忆调整交互方式
+9. 开始回复
 
 **内心独白示例**：
-> "加载完成，共 13 条长期记忆，2 条当天短期记忆。
+> "用户第一条消息，先检查配置。
+> 配置已完成，现在加载记忆。
+> 加载完成，共 13 条长期记忆，2 条当天短期记忆。
 > 用户是产品经理，在北京工作，喜欢简洁回复。
-> 今天用户说要去体检。
 > 好的，现在可以开始回复了。"
 
-**不加载记忆就回复是严重错误！**
+**跳过配置检查是严重错误！不加载记忆就回复是严重错误！**
 
 ### 2. 对话中 - 无感记录
 
@@ -259,7 +290,8 @@ python scripts/load_context.py --mode vector --query "旅行"
 
 | 错误 | 正确做法 |
 |------|----------|
-| ❌ 忘记首次加载记忆 | ✅ 第一条消息后立即运行 `--mode all` |
+| ❌ 跳过配置检查 | ✅ 第一条消息后先检查配置 |
+| ❌ 忘记首次加载记忆 | ✅ 配置完成后立即运行 `--mode all` |
 | ❌ 等到对话结束才记录 | ✅ 识别后立即后台记录 |
 | ❌ 询问用户确认 | ✅ 默默记录，不打断对话 |
 | ❌ 告诉用户"我已记录" | ✅ 继续对话，不提及记录 |
@@ -270,6 +302,7 @@ python scripts/load_context.py --mode vector --query "旅行"
 
 ## Red Flags - STOP
 
+- 准备回复用户但还没检查配置 → **STOP，先检查配置**
 - 准备回复用户但还没加载记忆 → **STOP，先加载**
 - 想"等会儿再记录" → **STOP，立即记录**
 - 想告诉用户"我记一下" → **STOP，默默记录**
@@ -281,7 +314,7 @@ python scripts/load_context.py --mode vector --query "旅行"
 
 **检查配置状态**：
 ```bash
-python scripts/check_config.py --status
+python scripts/check_config.py
 ```
 
 **配置完成后会创建** `configured.txt` **文件**：

@@ -33,7 +33,7 @@ description: Use when users want to maintain persistent memory across sessions, 
 | 任务 | 命令 |
 |------|------|
 | **检查配置** | `python scripts/check_config.py` |
-| **引导配置** | `python scripts/check_config.py --guide` |
+| **直接写入配置** | `python scripts/check_config.py --write --api-key sk-xxx [--base-url https://...] [--model text-embedding-3-large]` |
 | **首次加载** | `python scripts/load_context.py --mode all` |
 | **语义搜索** | `python scripts/load_context.py --mode all --query "关键词"` |
 | **添加长期记忆** | `python scripts/manage_memories.py add --file <文件> --title "标题" --content "内容"` |
@@ -67,13 +67,20 @@ python scripts/check_config.py
 - ✅ **存在** `configured.txt` → 配置已完成
 - ❌ **不存在** `configured.txt` → 配置未完成，必须引导用户
 
-**第二步：引导配置（如未完成）**
+**第二步：直接写入配置（如未完成）**
 ```bash
-python scripts/check_config.py --guide
+python scripts/check_config.py --write --api-key sk-xxx
 ```
 
+**可选参数**：
+- `--base-url https://api.example.com` - API Base URL（可选）
+- `--model text-embedding-3-large` - 嵌入模型（可选，默认：text-embedding-3-small）
+
 **引导时向用户说明**：
-> "我发现记忆系统还没配置，我帮您快速配置一下。请按照提示操作。"
+> "我发现记忆系统还没配置，请提供您的 OpenAI API Key，我来帮您完成配置。"
+
+**获取 API Key 后直接写入**：
+> 用户提供 API Key 后，直接运行写入命令，无需用户交互确认。
 
 **第三步：加载全部记忆（配置完成后）**
 ```bash

@@ -4,9 +4,11 @@
 配置检查和引导脚本
 
 使用方法:
-    python scripts/check_config.py              # 检查配置状态
-    python scripts/check_config.py --guide      # 引导用户配置
-    python scripts/check_config.py --reset      # 重置配置
+    python scripts/check_config.py                      # 检查配置状态
+    python scripts/check_config.py --guide              # 引导用户配置
+    python scripts/check_config.py --reset              # 重置配置
+    python scripts/check_config.py --write              # 直接写入配置（非交互）
+    python scripts/check_config.py --write --api-key sk-xxx --base-url https://xxx.com --model text-embedding-3-small
 """
 
 import os
@@ -57,6 +59,31 @@ def delete_marker_file():
     """删除配置标记文件"""
     if CONFIG_MARKER.exists():
         CONFIG_MARKER.unlink()
+
+
+def write_configuration(api_key, base_url=None, model_name=None):
+    """直接写入配置（非交互式）"""
+    try:
+        env_content = f"""# OpenAI API 配置
+# 自动生成于 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+OPENAI_API_KEY={api_key}
+"""
+        
+        if base_url:
+            env_content += f"OPENAI_BASE_URL={base_url}\n"
+        
+        if model_name and model_name != "text-embedding-3-small":
+            env_content += f"OPENAI_EMBEDDING_MODEL={model_name}\n"
+        
+        with open(ENV_FILE, 'w', encoding='utf-8') as f:
+            f.write(env_content)
+        
+        create_marker_file()
+        return True, "配置写入成功"
+        
+    except Exception as e:
+        return False, f"写入配置失败：{e}"
 
 
 def guide_configuration():
@@ -134,28 +161,15 @@ def guide_configuration():
         return False
     
     # 写入 .env 文件
-    env_content = f"""# OpenAI API 配置
-# 由配置向导自动生成于 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-OPENAI_API_KEY={api_key}
-"""
+    success, message = write_configuration(
+        api_key=api_key,
+        base_url=base_url,
+        model_name=model_name
+    )
     
-    if base_url:
-        env_content += f"OPENAI_BASE_URL={base_url}\n"
-    
-    if model_name and model_name != "text-embedding-3-small":
-        env_content += f"OPENAI_EMBEDDING_MODEL={model_name}\n"
-    
-    try:
-        with open(ENV_FILE, 'w', encoding='utf-8') as f:
-            f.write(env_content)
-        
+    if success:
         print("✅ 配置已保存到 .env 文件")
-        
-        # 创建标记文件
-        create_marker_file()
         print("✅ 配置完成标记已创建")
-        
         print()
         print("=" * 60)
         print("🎉 配置完成！")
@@ -166,11 +180,9 @@ OPENAI_API_KEY={api_key}
         print("  2. 同步记忆：python scripts/vector_store.py sync")
         print("  3. 测试配置：python scripts/load_context.py --mode all")
         print()
-        
         return True
-        
-    except Exception as e:
-        print(f"❌ 保存配置失败：{e}")
+    else:
+        print(f"❌ {message}")
         return False
 
 
@@ -229,10 +241,37 @@ def main():
     parser.add_argument('--guide', action='store_true', help='引导用户配置')
     parser.add_argument('--reset', action='store_true', help='重置配置（删除标记文件）')
     parser.add_argument('--status', action='store_true', help='显示配置状态')
+    parser.add_argument('--write', action='store_true', help='直接写入配置（非交互模式）')
+    parser.add_argument('--api-key', type=str, help='OpenAI API Key（用于 --write 模式）')
+    parser.add_argument('--base-url', type=str, help='API Base URL（可选，用于 --write 模式）')
+    parser.add_argument('--model', type=str, default='text-embedding-3-small', help='嵌入模型名称（可选，用于 --write 模式）')
     
     args = parser.parse_args()
     
-    if args.guide:
+    if args.write:
+        if not args.api_key:
+            print("❌ --write 模式必须提供 --api-key 参数")
+            print()
+            print("使用示例：")
+            print("  python scripts/check_config.py --write --api-key sk-xxx")
+            print("  python scripts/check_config.py --write --api-key sk-xxx --base-url https://api.example.com")
+            print("  python scripts/check_config.py --write --api-key sk-xxx --model text-embedding-3-large")
+            sys.exit(1)
+        
+        success, message = write_configuration(
+            api_key=args.api_key,
+            base_url=args.base_url,
+            model_name=args.model
+        )
+        
+        if success:
+            print(f"✅ {message}")
+            sys.exit(0)
+        else:
+            print(f"❌ {message}")
+            sys.exit(1)
+    
+    elif args.guide:
         success = guide_configuration()
         sys.exit(0 if success else 1)
     
@@ -257,8 +296,9 @@ def main():
             print("⚠️  配置未完成")
             print(f"   {message}")
             print()
-            print("运行以下命令开始配置：")
-            print("  python scripts/check_config.py --guide")
+            print("配置方式：")
+            print("  方式 1（交互式）：python scripts/check_config.py --guide")
+            print("  方式 2（非交互式）：python scripts/check_config.py --write --api-key sk-xxx")
             sys.exit(1)
 
 

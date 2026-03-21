@@ -49,14 +49,37 @@ def print_separator(char='=', length=60):
     print(char * length)
 
 
-def print_header(mode_name: str):
+def check_config_status():
+    """检查配置状态，返回是否已配置"""
+    configured_file = SKILL_DIR / "configured.txt"
+    env_file = SKILL_DIR / ".env"
+    
+    if configured_file.exists():
+        return True, "已配置"
+    
+    if not env_file.exists():
+        return False, ".env 文件不存在"
+    
+    # 检查 .env 文件中是否有 API Key
+    with open(env_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+        if 'OPENAI_API_KEY=' in content:
+            # 有 API Key 但没有 configured.txt，自动创建
+            configured_file.touch()
+            return True, "已配置"
+    
+    return False, "API Key 未配置"
+
+
+def print_config_warning():
+    """打印配置警告信息"""
+    print("⚠️ 记忆系统未配置 | 需要：OPENAI_API_KEY | 配置：python scripts/check_config.py --write --api-key sk-xxx")
+    print()
+
+
+def print_header(mode_name: str, config_status: tuple = None):
     """打印头部信息"""
-    print_separator()
-    print("🧠 记忆加载系统")
-    print_separator()
-    print(f"📂 加载模式：{mode_name}")
-    print(f"⏰ 加载时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print_separator()
+    print(f"🧠 记忆加载 | 模式：{mode_name}")
     print()
 
 
@@ -103,37 +126,30 @@ def extract_memories(content, file_name=''):
 
 def load_long_term_memories(full: bool = False):
     """加载长期记忆"""
-    print("📚 加载长期记忆...\n")
-    
     all_memories = {}
-    
+
     for file_name in MEMORY_FILES:
         file_path = MEMORIES_DIR / file_name
         if not file_path.exists():
             continue
-        
+
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
+
         memories = extract_memories(content, file_name)
         if memories:
             all_memories[file_name] = memories
-    
+
     if not all_memories:
-        print("⚠️  未找到长期记忆文件")
+        print("📚 长期记忆：无")
         return
-    
-    # 打印摘要
+
     total = sum(len(memories) for memories in all_memories.values())
-    print(f"📊 共 {total} 条长期记忆\n")
-    
+    print(f"📚 长期记忆：{total} 条")
+
     for file_name, memories in all_memories.items():
-        print(f"📄 {file_name} ({len(memories)} 条)")
         for memory in memories:
-            tags = memory['meta'].get('tags', '无')
-            print(f"   • {memory['title']}")
-            print(f"     标签：{tags}")
-        print()
+            print(f"   • {memory['title']} ({memory['meta'].get('tags', '无')})")
     
     # 打印完整内容（如果请求）
     if full:
@@ -155,34 +171,29 @@ def load_long_term_memories(full: bool = False):
 
 def load_short_term_memories(date: str = None):
     """加载短期记忆"""
-    print("⏱️  加载短期记忆...\n")
-    
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
-    
+
     file_path = SHORT_TERM_DIR / f"{date}.md"
-    
+
     if not file_path.exists():
-        print(f"⚠️  今日 ({date}) 暂无短期记忆")
+        print("⏱️  短期记忆：无")
         return
-    
+
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
-    
-    # 提取 session 内容
+
     pattern = r'<!--\s*@session.+?-->\s*\n(.*?)<!--\s*@end\s*-->'
     matches = re.finditer(pattern, content, re.DOTALL)
-    
+
     count = 0
     for match in matches:
         entry_content = match.group(1).strip()
-        print(f"📝 {entry_content[:150]}...")
+        print(f"⏱️  短期记忆：{entry_content[:100]}...")
         count += 1
-    
+
     if count == 0:
-        print("⚠️  今日暂无短期记忆")
-    else:
-        print(f"\n📊 共 {count} 条短期记忆")
+        print("⏱️  短期记忆：无")
 
 
 # ==================== 向量记忆加载 ====================
@@ -285,7 +296,7 @@ def load_vector_memories(query: str = None, top_k: int = 5):
 
 def main():
     parser = argparse.ArgumentParser(description='统一记忆加载工具', add_help=True)
-    
+
     parser.add_argument(
         '--mode',
         choices=['all', 'vector'],
@@ -295,45 +306,46 @@ def main():
     parser.add_argument('--full', action='store_true', help='加载完整内容')
     parser.add_argument('--query', type=str, help='搜索关键词（向量搜索）')
     parser.add_argument('--top-k', type=int, default=5, help='返回结果数量（仅向量搜索）')
-    
+
     args = parser.parse_args()
-    
+
     # vector 模式必须有 query
     if args.mode == 'vector' and not args.query:
         print("❌ --mode vector 必须指定 --query 参数")
         sys.exit(1)
-    
+
+    # 检查配置状态
+    is_configured, status_msg = check_config_status()
+    config_status = (is_configured, status_msg)
+
+    # 未配置时打印警告（但继续执行，允许加载空记忆）
+    if not is_configured and args.mode == 'all':
+        print_config_warning()
+
     # 只有 --mode all 时才自动归档
     if args.mode == 'all':
         auto_archive(dry_run=False)
-        print()
-    
+
     # 打印头部
     mode_names = {
         'all': '全部记忆',
         'vector': '向量搜索'
     }
-    print_header(mode_names[args.mode])
-    
+    print_header(mode_names[args.mode], config_status)
+
     if args.mode == 'all':
-        # 加载长期记忆 + 当天短期记忆
         load_long_term_memories(full=args.full)
-        print()
-        load_short_term_memories()  # 加载今天
-        
-        # 如果有 query 参数，额外加载向量搜索结果
+        load_short_term_memories()
+
         if args.query:
             print()
             load_vector_memories(args.query, args.top_k)
-    
+
     elif args.mode == 'vector':
-        # 仅向量搜索（不加载长期/短期记忆）
+        if not is_configured:
+            print("❌ 向量搜索需要配置 OPENAI_API_KEY")
+            sys.exit(1)
         load_vector_memories(args.query, args.top_k)
-    
-    print()
-    print_separator('=')
-    print("✅ 记忆加载完成")
-    print_separator('=')
 
 
 if __name__ == '__main__':

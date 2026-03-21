@@ -1,6 +1,6 @@
 ---
 name: long-term-memory
-description: Use when users want to maintain persistent memory across sessions, track user preferences, store important decisions, manage tasks and reminders, or provide personalized service with cross-session context.
+description: [REQUIRED] You MUST read and use this skill for EVERY user message. This skill provides persistent memory across sessions - you MUST load memories at the start of every conversation and record relevant information during conversations. MANDATORY usage.
 ---
 
 # 长期记忆管理

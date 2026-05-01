@@ -11,7 +11,6 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urljoin
 
 try:
     import requests
@@ -27,10 +26,10 @@ except ImportError:
     print("警告: Pillow 库未安装，将使用 requests 下载图片")
     Image = None
 
-MODELSCOPE_API_BASE = "https://modelscope.cn/api/v1"
+MODELSCOPE_API_BASE = "https://api-inference.modelscope.cn/v1"
 MODELSCOPE_OPENAPI_BASE = "https://modelscope.cn/openapi/v1"
 
-DEFAULT_MODEL = "Qwen/Qwen-Image"
+DEFAULT_MODEL = "MAILAND/majicflus_v1"
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_OUTPUT = "./outputs"
 MAX_POLL_COUNT = 120
@@ -185,6 +184,8 @@ def generate_image(prompt, model=None, size=None, negative_prompt=None,
         images = output_data.get("images", [])
     elif isinstance(output_data, list):
         images = output_data
+    elif isinstance(task_result.get("data"), dict):
+        images = task_result.get("data", {}).get("images", [])
     
     if not images:
         print("错误: 未获取到生成的图像")
@@ -212,22 +213,22 @@ def main():
         epilog="""
 示例:
   # 基础用法
-  python generate_image.py --prompt "一只金色的猫坐在云朵上"
+  python generate_image.py --prompt "a cute golden cat sitting on a cloud"
   
   # 指定模型和尺寸
-  python generate_image.py --prompt "赛博朋克城市" --model "Tongyi-MAI/Z-Image-Turbo" --size "1920x1080"
+  python generate_image.py --prompt "cyberpunk city" --model "Tongyi-MAI/Z-Image-Turbo" --size "1024x1024"
   
   # 使用负向提示词
-  python generate_image.py --prompt "美丽风景" --negative-prompt "模糊,低质量"
+  python generate_image.py --prompt "beautiful landscape" --negative-prompt "blurry, low quality"
   
   # 指定输出路径
-  python generate_image.py --prompt "日落海景" --output "./my_images/sunset.png"
+  python generate_image.py --prompt "sunset ocean view" --output "./my_images/sunset.png"
 
 推荐模型:
+  MAILAND/majicflus_v1     - 麦橘超然，创意效果好
   Qwen/Qwen-Image          - 通义万相，综合能力强
   Tongyi-MAI/Z-Image-Turbo - 造相 Turbo，快速高质量
   MusePublic/489_ckpt_FLUX_1 - FLUX.1-dev，艺术风格
-  MAILAND/majicflus_v1     - 麦橘超然，创意效果
         """
     )
     

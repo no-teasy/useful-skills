@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
-ModelScope 图像生成脚本
-使用 ModelScope API 通过文本提示词生成图像
+ModelScope 图像生成脚本 - 修复版
 """
-
 import argparse
 import json
 import os
@@ -27,8 +25,6 @@ except ImportError:
     Image = None
 
 MODELSCOPE_API_BASE = "https://api-inference.modelscope.cn/v1"
-MODELSCOPE_OPENAPI_BASE = "https://modelscope.cn/openapi/v1"
-
 DEFAULT_MODEL = "MAILAND/majicflus_v1"
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_OUTPUT = "./outputs"
@@ -72,7 +68,7 @@ def submit_task(token, prompt, model, size, negative_prompt=None, seed=None, ste
     if guidance is not None:
         payload["guidance"] = guidance
     
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload, timeout=60)
     
     if response.status_code == 401:
         print("错误: API Token 无效或已过期")
@@ -93,11 +89,12 @@ def poll_task_status(token, task_id):
     
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-ModelScope-Task-Type": "image_generation"
     }
     
     for i in range(MAX_POLL_COUNT):
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=30)
         
         if response.status_code != 200:
             print(f"警告: 轮询任务状态失败 ({response.status_code})")
@@ -105,23 +102,23 @@ def poll_task_status(token, task_id):
             continue
         
         data = response.json()
-        status = data.get("status", "UNKNOWN")
+        status = data.get("task_status", "UNKNOWN")
         
-        if status == "SUCCEEDED":
+        if i % 6 == 0:
+            print(f"⏳ 任务处理中 (尝试 {i+1}/{MAX_POLL_COUNT}): 状态 = {status}")
+        
+        if status == "SUCCEED":
+            print("✅ 任务成功!")
             return data
         elif status == "FAILED":
             error_msg = data.get("message", "未知错误")
-            print(f"错误: 任务执行失败 - {error_msg}")
+            print(f"❌ 任务失败: {error_msg}")
+            print(f"完整响应: {data}")
             sys.exit(1)
-        elif status in ["PENDING", "RUNNING"]:
-            if i % 6 == 0:
-                print(f"⏳ 任务处理中... ({i * POLL_INTERVAL}秒)")
-            time.sleep(POLL_INTERVAL)
         else:
-            print(f"警告: 未知状态 {status}")
             time.sleep(POLL_INTERVAL)
     
-    print("错误: 任务超时（超过最大等待时间）")
+    print("❌ 任务超时（超过最大等待时间）")
     sys.exit(1)
 
 
@@ -166,7 +163,7 @@ def generate_image(prompt, model=None, size=None, negative_prompt=None,
     
     result = submit_task(token, prompt, model, size, negative_prompt, seed, steps, guidance)
     
-    task_id = result.get("task_id") or result.get("data", {}).get("task_id")
+    task_id = result.get("task_id")
     if not task_id:
         print("错误: 未获取到任务 ID")
         print(f"响应: {result}")
@@ -177,29 +174,18 @@ def generate_image(prompt, model=None, size=None, negative_prompt=None,
     
     task_result = poll_task_status(token, task_id)
     
-    images = []
-    output_data = task_result.get("output") or task_result.get("data", {}).get("output", {})
-    
-    if isinstance(output_data, dict):
-        images = output_data.get("images", [])
-    elif isinstance(output_data, list):
-        images = output_data
-    elif isinstance(task_result.get("data"), dict):
-        images = task_result.get("data", {}).get("images", [])
-    
+    images = task_result.get("output_images", [])
     if not images:
         print("错误: 未获取到生成的图像")
-        print(f"响应: {task_result}")
+        print(f"完整响应: {task_result}")
         sys.exit(1)
     
-    image_url = images[0] if isinstance(images[0], str) else images[0].get("url", images[0].get("image_url"))
-    
-    print(f"⬇️  下载图像...")
+    image_url = images[0]
+    print(f"⬇️  下载图像: {image_url}")
     
     if download_image(image_url, output_path):
         print(f"\n✅ 图像生成成功！")
         print(f"💾 保存路径: {output_path.absolute()}")
-        print(f"🌐 图片URL: {image_url}")
         return str(output_path.absolute())
     else:
         print("❌ 图像保存失败")
@@ -216,7 +202,7 @@ def main():
   python generate_image.py --prompt "a cute golden cat sitting on a cloud"
   
   # 指定模型和尺寸
-  python generate_image.py --prompt "cyberpunk city" --model "Tongyi-MAI/Z-Image-Turbo" --size "1024x1024"
+  python generate_image.py --prompt "cyberpunk city" --model "Qwen/Qwen-Image" --size "1024x1024"
   
   # 使用负向提示词
   python generate_image.py --prompt "beautiful landscape" --negative-prompt "blurry, low quality"
@@ -247,7 +233,7 @@ def main():
     parser.add_argument(
         "--size", "-s",
         default=DEFAULT_SIZE,
-        help=f"图像尺寸，如 1024x1024, 1920x1080 (默认: {DEFAULT_SIZE})"
+        help=f"图像尺寸 (默认: {DEFAULT_SIZE})"
     )
     
     parser.add_argument(
@@ -263,7 +249,7 @@ def main():
     parser.add_argument(
         "--seed",
         type=int,
-        help="随机种子，用于复现结果"
+        help="随机种子"
     )
     
     parser.add_argument(

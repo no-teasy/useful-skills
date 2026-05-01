@@ -10,7 +10,7 @@
 
 | API 类型 | URL |
 |----------|-----|
-| 推理 API | `https://modelscope.cn/api/v1` |
+| 推理 API | `https://api-inference.modelscope.cn/v1` |
 | OpenAPI | `https://modelscope.cn/openapi/v1` |
 
 ### 认证
@@ -39,10 +39,10 @@ X-ModelScope-Async-Mode: true
 **请求体**:
 ```json
 {
-  "model": "Qwen/Qwen-Image",
-  "prompt": "一只金色的猫坐在云朵上",
+  "model": "MAILAND/majicflus_v1",
+  "prompt": "a cute golden cat sitting on a cloud",
   "size": "1024x1024",
-  "negative_prompt": "模糊,低质量",
+  "negative_prompt": "blurry, low quality",
   "seed": 12345,
   "steps": 30,
   "guidance": 3.5
@@ -65,7 +65,7 @@ X-ModelScope-Async-Mode: true
 ```json
 {
   "task_id": "abc123def456",
-  "status": "PENDING"
+  "task_status": "PROCESSING"
 }
 ```
 
@@ -77,14 +77,14 @@ X-ModelScope-Async-Mode: true
 ```
 Authorization: Bearer YOUR_TOKEN
 Content-Type: application/json
+X-ModelScope-Task-Type: image_generation
 ```
 
 **响应 (处理中)**:
 ```json
 {
   "task_id": "abc123def456",
-  "status": "RUNNING",
-  "progress": 50
+  "task_status": "PROCESSING"
 }
 ```
 
@@ -92,12 +92,10 @@ Content-Type: application/json
 ```json
 {
   "task_id": "abc123def456",
-  "status": "SUCCEEDED",
-  "output": {
-    "images": [
-      "https://modelscope.cn/.../image1.png"
-    ]
-  }
+  "task_status": "SUCCEED",
+  "output_images": [
+    "https://example.com/image1.png"
+  ]
 }
 ```
 
@@ -105,7 +103,7 @@ Content-Type: application/json
 ```json
 {
   "task_id": "abc123def456",
-  "status": "FAILED",
+  "task_status": "FAILED",
   "message": "错误原因"
 }
 ```
@@ -115,8 +113,8 @@ Content-Type: application/json
 | 状态 | 说明 |
 |------|------|
 | `PENDING` | 等待处理 |
-| `RUNNING` | 正在处理 |
-| `SUCCEEDED` | 成功完成 |
+| `PROCESSING` | 正在处理 |
+| `SUCCEED` | 成功完成 |
 | `FAILED` | 执行失败 |
 
 ## 模型列表 API
@@ -135,8 +133,6 @@ Content-Type: application/json
 | `page_number` | integer | ❌ | 页码 (默认: 1) |
 | `page_size` | integer | ❌ | 每页数量 (默认: 10, 最大: 50) |
 | `filter.task` | string | ❌ | 任务类型筛选 |
-| `filter.library` | string | ❌ | 框架筛选 |
-| `filter.license` | string | ❌ | 许可证筛选 |
 
 **示例请求**:
 ```
@@ -167,77 +163,26 @@ GET /models?filter.task=text-to-image-synthesis&sort=downloads&page_size=20
 }
 ```
 
-### 获取模型详情
-
-**端点**: `GET /models/{owner}/{repo_name}`
-
-**示例**: `GET /models/Qwen/Qwen-Image`
-
-**响应**:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "Qwen/Qwen-Image",
-    "display_name": "Qwen-Image",
-    "description": "...",
-    "downloads": 2568039,
-    "likes": 431,
-    "license": "apache-2.0",
-    "tasks": ["text-to-image-synthesis"],
-    "created_at": "2025-08-02T04:25:45Z",
-    "last_modified": "2025-08-18T02:42:52Z"
-  }
-}
-```
-
 ## 推荐模型
 
 ### 高质量模型
 
-| 模型 ID | 说明 | 参数量 | 下载量 |
-|---------|------|--------|--------|
-| `Qwen/Qwen-Image` | 通义万相 | 28B | 2.5M+ |
-| `Tongyi-MAI/Z-Image-Turbo` | 造相 Turbo | 10B | 527K+ |
-| `Tongyi-MAI/Z-Image` | 造相 | 10B | 123K+ |
-| `MusePublic/489_ckpt_FLUX_1` | FLUX.1-dev | 28B | 1.3M+ |
-| `MAILAND/majicflus_v1` | 麦橘超然 | 11B | 547K+ |
+| 模型 ID | 说明 | 下载量 |
+|---------|------|--------|
+| `MAILAND/majicflus_v1` | 麦橘超然 | 547K+ |
+| `Qwen/Qwen-Image` | 通义万相 | 2.5M+ |
+| `Tongyi-MAI/Z-Image-Turbo` | 造相 Turbo | 527K+ |
+| `MusePublic/489_ckpt_FLUX_1` | FLUX.1-dev | 1.3M+ |
 
-### 风格化模型
+### 使用限制
 
-| 模型 ID | 风格 |
-|---------|------|
-| `yiwanji/FLUX_xiao_hong_shu_ji_zhi_zhen_shi_V2` | 小红书风格 |
-| `laonansheng/ruanqing-Z-Image-Turbo-Tongyi-MAI-v1.0` | 软情风格 |
-| `laonansheng/naixi-girl-Z-Image-Turbo-Tongyi-MAI-v1.0` | 奶昔女孩 |
-
-## 错误码
-
-| HTTP 状态码 | 说明 |
-|-------------|------|
-| 200 | 成功 |
-| 400 | 请求参数错误 |
-| 401 | 认证失败或 Token 无效 |
-| 403 | 权限不足 |
-| 404 | 资源不存在 |
-| 429 | 请求过于频繁 |
-| 500 | 服务器内部错误 |
-| 503 | 服务不可用 |
-
-## 使用限制
-
-### 免费额度
+#### 免费额度
 
 | 项目 | 限制 |
 |------|------|
 | 每日总调用次数 | 2000 次 |
 | 单模型每日调用 | 500 次 |
 | 重置时间 | 每日 00:00 (北京时间) |
-
-### 速率限制
-
-- 建议: 每秒不超过 5 次请求
-- 异步任务: 最多等待 2 分钟
 
 ## 代码示例
 
@@ -247,10 +192,10 @@ GET /models?filter.task=text-to-image-synthesis&sort=downloads&page_size=20
 import requests
 import time
 
-API_BASE = "https://modelscope.cn/api/v1"
+API_BASE = "https://api-inference.modelscope.cn/v1"
 TOKEN = "your_token_here"
 
-def generate_image(prompt, model="Qwen/Qwen-Image"):
+def generate_image(prompt, model="MAILAND/majicflus_v1", size="1024x1024"):
     headers = {
         "Authorization": f"Bearer {TOKEN}",
         "Content-Type": "application/json",
@@ -260,68 +205,45 @@ def generate_image(prompt, model="Qwen/Qwen-Image"):
     payload = {
         "model": model,
         "prompt": prompt,
-        "size": "1024x1024"
+        "size": size
     }
     
     response = requests.post(
         f"{API_BASE}/images/generations",
         headers=headers,
-        json=payload
+        json=payload,
+        timeout=60
     )
     
     task_id = response.json()["task_id"]
+    print(f"Task ID: {task_id}")
+    
+    poll_headers = {
+        "Authorization": f"Bearer {TOKEN}",
+        "Content-Type": "application/json",
+        "X-ModelScope-Task-Type": "image_generation"
+    }
     
     while True:
         status_response = requests.get(
             f"{API_BASE}/tasks/{task_id}",
-            headers=headers
+            headers=poll_headers,
+            timeout=30
         )
         data = status_response.json()
         
-        if data["status"] == "SUCCEEDED":
-            return data["output"]["images"][0]
-        elif data["status"] == "FAILED":
+        task_status = data.get("task_status", "UNKNOWN")
+        print(f"Status: {task_status}")
+        
+        if task_status == "SUCCEED":
+            return data["output_images"][0]
+        elif task_status == "FAILED":
             raise Exception(data.get("message", "Task failed"))
         
         time.sleep(5)
 
-image_url = generate_image("一只金色的猫坐在云朵上")
+image_url = generate_image("a cute golden cat sitting on a cloud")
 print(f"Generated image: {image_url}")
-```
-
-### cURL
-
-```bash
-TOKEN="your_token_here"
-
-TASK_ID=$(curl -s -X POST "https://modelscope.cn/api/v1/images/generations" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -H "X-ModelScope-Async-Mode: true" \
-  -d '{"model":"Qwen/Qwen-Image","prompt":"一只金色的猫","size":"1024x1024"}' \
-  | jq -r '.task_id')
-
-echo "Task ID: $TASK_ID"
-
-while true; do
-  STATUS=$(curl -s "https://modelscope.cn/api/v1/tasks/$TASK_ID" \
-    -H "Authorization: Bearer $TOKEN" \
-    | jq -r '.status')
-  
-  echo "Status: $STATUS"
-  
-  if [ "$STATUS" = "SUCCEEDED" ]; then
-    curl -s "https://modelscope.cn/api/v1/tasks/$TASK_ID" \
-      -H "Authorization: Bearer $TOKEN" \
-      | jq -r '.output.images[0]'
-    break
-  elif [ "$STATUS" = "FAILED" ]; then
-    echo "Task failed"
-    break
-  fi
-  
-  sleep 5
-done
 ```
 
 ## 相关链接

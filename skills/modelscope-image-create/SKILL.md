@@ -108,7 +108,7 @@ python scripts/list_models.py --search "写实"
 | 参数 | 必需 | 默认值 | 说明 |
 |------|------|--------|------|
 | `--prompt` | ✅ | - | 正向提示词，描述想要生成的图像 |
-| `--model` | ❌ | `Qwen/Qwen-Image` | 模型 ID |
+| `--model` | ❌ | `MAILAND/majicflus_v1` | 模型 ID |
 | `--size` | ❌ | `1024x1024` | 图像尺寸，如 `1024x1024`、`1920x1080` |
 | `--negative-prompt` | ❌ | - | 负向提示词，描述不想要的元素 |
 | `--output` | ❌ | `./outputs/result_image.jpg` | 输出文件路径 |

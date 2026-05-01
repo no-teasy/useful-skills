@@ -25,7 +25,7 @@ except ImportError:
     Image = None
 
 MODELSCOPE_API_BASE = "https://api-inference.modelscope.cn/v1"
-DEFAULT_MODEL = "MAILAND/majicflus_v1"
+DEFAULT_MODEL = os.environ.get("MODELSCOPE_DEFAULT_MODEL", "MAILAND/majicflus_v1")
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_OUTPUT = "./outputs"
 MAX_POLL_COUNT = 120

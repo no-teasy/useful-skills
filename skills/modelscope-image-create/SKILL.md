@@ -61,7 +61,7 @@ python scripts/edit_image.py --image outputs/result_image_xxx.png --prompt "Chan
 # 完整配置示例
 python scripts/generate_image.py \
   --prompt "A magical forest with glowing mushrooms, fantasy art, high detail" \
-  --model "MAILAND/majicflus_v1" \
+  --model "Tongyi-MAI/Z-Image-Turbo" \
   --size "1024x1024" \
   --negative-prompt "low quality, blurry, watermark" \
   --seed 12345 \
@@ -74,9 +74,9 @@ python scripts/generate_image.py \
 
 | 模型 | 说明 | 适用场景 |
 |------|------|---------|
+| `Tongyi-MAI/Z-Image-Turbo` | 造相 Turbo | 快速生成、质量平衡（**默认**） |
 | `MAILAND/majicflus_v1` | 麦橘超然 | 艺术风格、创意生成 |
 | `Qwen/Qwen-Image` | 通义万相 | 综合能力强、中文理解 |
-| `Tongyi-MAI/Z-Image-Turbo` | 造相 Turbo | 快速生成、质量平衡 |
 | `MusePublic/489_ckpt_FLUX_1` | FLUX.1-dev | 艺术风格、高质量 |
 
 ---
@@ -105,7 +105,7 @@ python scripts/generate_image.py \
 python scripts/edit_image.py \
   --image "my_photo.png" \
   --prompt "Change the background to a beautiful sunset, Studio Ghibli style" \
-  --model "Qwen/Qwen-Image-Edit-2511" \
+  --model "FireRedTeam/FireRed-Image-Edit-1.1" \
   --negative-prompt "low quality, bad hands" \
   --seed 12345 \
   --steps 40 \
@@ -117,8 +117,9 @@ python scripts/edit_image.py \
 
 | 模型 | 说明 | 特点 |
 |------|------|------|
-| `Qwen/Qwen-Image-Edit-2511` | 最新版 | 角色一致性好，支持 LoRA |
-| `Qwen/Qwen-Image-Edit-2509` | 稳定版 | 单人一致性好 |
+| `FireRedTeam/FireRed-Image-Edit-1.1` | FireRed 编辑版 | **默认** |
+| `Qwen/Qwen-Image-Edit-2511` | Qwen 最新版 | 角色一致性好，支持 LoRA |
+| `Qwen/Qwen-Image-Edit-2509` | Qwen 稳定版 | 单人一致性好 |
 
 ---
 
@@ -137,6 +138,20 @@ python scripts/list_models.py --search "flux"
 python scripts/list_models.py --sort likes
 ```
 
+### ⚠️ 重要说明
+
+> **注意**：即便在 `list_models.py` 查询结果中显示的模型，也**可能不支持通过 API 调用**。
+>
+> 部分模型可能需要：
+> - 不同的 API 端点或参数
+> - 额外的权限或订阅
+> - 本地部署而非云端 API
+>
+> 如果遇到 API 调用失败，建议：
+> 1. 尝试本 skill 中推荐的默认模型
+> 2. 访问模型主页查看使用说明
+> 3. 查看 ModelScope 官方文档获取最新信息
+
 ---
 
 ## 参数说明
@@ -146,7 +161,7 @@ python scripts/list_models.py --sort likes
 | 参数 | 必填 | 说明 | 示例 |
 |------|------|------|------|
 | `--prompt` | ✅ | 正向提示词（建议使用英文） | `"A girl walking down the corridor"` |
-| `--model` | ❌ | 模型 ID（使用环境变量默认值） | `"MAILAND/majicflus_v1"` |
+| `--model` | ❌ | 模型 ID（使用环境变量默认值） | `"Tongyi-MAI/Z-Image-Turbo"` |
 | `--negative-prompt` | ❌ | 负向提示词 | `"lowres, blurry, bad quality"` |
 | `--seed` | ❌ | 随机种子（可复现结果） | `12345` |
 | `--steps` | ❌ | 采样步数 [1, 100] | `40` |
@@ -211,8 +226,8 @@ bad anatomy, extra fingers, text, error
 ```bash
 # ~/.bashrc 或 ~/.zshrc
 export MODELSCOPE_SDK_TOKEN="your_token_here"
-export MODELSCOPE_DEFAULT_MODEL="MAILAND/majicflus_v1"
-export MODELSCOPE_EDIT_MODEL="Qwen/Qwen-Image-Edit-2511"
+export MODELSCOPE_DEFAULT_MODEL="Tongyi-MAI/Z-Image-Turbo"
+export MODELSCOPE_EDIT_MODEL="FireRedTeam/FireRed-Image-Edit-1.1"
 ```
 
 ### 免费额度
@@ -233,9 +248,9 @@ export MODELSCOPE_EDIT_MODEL="Qwen/Qwen-Image-Edit-2511"
 export MODELSCOPE_SDK_TOKEN="your_token_here"
 ```
 
-### Q: 如何确认模型支持图像编辑？
+### Q: 如何确认模型支持 API 调用？
 
-使用专门的编辑模型（Qwen/Qwen-Image-Edit 系列）而非普通文生图模型。
+⚠️ **重要**：`list_models.py` 中显示的模型**不一定都支持 API 调用**。建议使用本 skill 推荐的默认模型，它们已验证支持 API 调用。
 
 ### Q: 任务超时怎么办？
 

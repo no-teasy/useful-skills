@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ModelScope 图像编辑脚本（根据官方文档更新）
+ModelScope 图像编辑脚本
 支持 URL 和 Base64 编码图片输入
 """
 
@@ -12,7 +12,6 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote
 
 try:
     import requests
@@ -28,7 +27,7 @@ except ImportError:
     print("警告: Pillow 库未安装，将使用 requests 下载图片")
 
 MODELSCOPE_API_BASE = "https://api-inference.modelscope.cn/v1/images/generations"
-DEFAULT_MODEL = os.environ.get("MODELSCOPE_EDIT_MODEL", "Qwen/Qwen-Image-Edit-2511")
+DEFAULT_MODEL = os.environ.get("MODELSCOPE_EDIT_MODEL", "FireRedTeam/FireRed-Image-Edit-1.1")
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_OUTPUT = "./outputs"
 MAX_POLL_COUNT = 120
@@ -109,7 +108,7 @@ def submit_task(token, image_input, prompt, model, negative_prompt=None,
         elif response.status_code == 404:
             print(f"错误: API 端点不可用 (404)")
             print(f"提示: 有些模型可能不支持图像编辑，请确认模型是否为编辑模型")
-            print(f"      推荐编辑模型: Qwen/Qwen-Image-Edit-2511, Qwen/Qwen-Image-Edit-2509")
+            print(f"      推荐编辑模型: FireRedTeam/FireRed-Image-Edit-1.1, Qwen/Qwen-Image-Edit-2511")
             sys.exit(1)
         elif response.status_code == 429:
             print("错误: 请求过于频繁，请稍后重试")
@@ -237,12 +236,13 @@ def edit_image(image_input, prompt, model=None, negative_prompt=None,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="ModelScope 图像编辑工具（支持 URL 和 Base64）",
+        description="ModelScope 图像编辑工具",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 推荐编辑模型:
-  Qwen/Qwen-Image-Edit-2511 - 最新版，角色一致性好
-  Qwen/Qwen-Image-Edit-2509 - 稳定版，单人一致性好
+  FireRedTeam/FireRed-Image-Edit-1.1 - FireRed 编辑模型（默认）
+  Qwen/Qwen-Image-Edit-2511            - Qwen 最新编辑版
+  Qwen/Qwen-Image-Edit-2509            - Qwen 稳定版
 
 分辨率范围:
   SD系列: [64x64, 2048x2048]
@@ -259,9 +259,6 @@ def main():
   
   # 使用 LoRA 模型
   python edit_image.py --image input.png --prompt "动漫风格" --loras "<lora-repo-id>"
-  
-  # 配置高级参数
-  python edit_image.py --image input.png --prompt "编辑描述" --seed 12345 --steps 50
         """
     )
     

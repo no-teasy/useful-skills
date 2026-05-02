@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ModelScope 图像生成脚本 - 修复版
+ModelScope 图像生成脚本
 """
 import argparse
 import json
@@ -25,7 +25,7 @@ except ImportError:
     Image = None
 
 MODELSCOPE_API_BASE = "https://api-inference.modelscope.cn/v1"
-DEFAULT_MODEL = os.environ.get("MODELSCOPE_DEFAULT_MODEL", "MAILAND/majicflus_v1")
+DEFAULT_MODEL = os.environ.get("MODELSCOPE_DEFAULT_MODEL", "Tongyi-MAI/Z-Image-Turbo")
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_OUTPUT = "./outputs"
 MAX_POLL_COUNT = 120
@@ -198,10 +198,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  # 基础用法
+  # 基础用法（使用默认模型 Tongyi-MAI/Z-Image-Turbo）
   python generate_image.py --prompt "a cute golden cat sitting on a cloud"
   
-  # 指定模型和尺寸
+  # 指定其他模型
   python generate_image.py --prompt "cyberpunk city" --model "Qwen/Qwen-Image" --size "1024x1024"
   
   # 使用负向提示词
@@ -211,9 +211,9 @@ def main():
   python generate_image.py --prompt "sunset ocean view" --output "./my_images/sunset.png"
 
 推荐模型:
+  Tongyi-MAI/Z-Image-Turbo - 造相 Turbo，快速高质量（默认）
   MAILAND/majicflus_v1     - 麦橘超然，创意效果好
   Qwen/Qwen-Image          - 通义万相，综合能力强
-  Tongyi-MAI/Z-Image-Turbo - 造相 Turbo，快速高质量
   MusePublic/489_ckpt_FLUX_1 - FLUX.1-dev，艺术风格
         """
     )

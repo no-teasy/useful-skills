@@ -1,0 +1,62 @@
+name: Release Skills
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: "contains(github.event.head_commit.modified, 'VERSION') || contains(github.event.head_commit.added, 'VERSION')"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read version from VERSION file
+        id: version
+        run: |
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create packages
+        run: |
+          mkdir -p dist
+          
+          for skill_dir in skills/*/; do
+            skill_name=$(basename "$skill_dir")
+            
+            temp_dir=$(mktemp -d)
+            
+            if [ -f "$skill_dir/SKILL.md" ]; then
+              cp "$skill_dir/SKILL.md" "$temp_dir/"
+            fi
+            
+            rsync -a --exclude='outputs' "$skill_dir" "$temp_dir/skill_content/"
+            rm -f "$temp_dir/skill_content/SKILL.md"
+            
+            cd "$temp_dir"
+            zip -r "/workspace/dist/${skill_name}.zip" .
+            cd -
+            
+            rm -rf "$temp_dir"
+            echo "Created package: ${skill_name}.zip"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

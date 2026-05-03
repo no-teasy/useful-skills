@@ -42,7 +42,7 @@ jobs:
             rm -f "$temp_dir/skill_content/SKILL.md"
             
             cd "$temp_dir"
-            zip -r "/workspace/dist/${skill_name}.zip" .
+            zip -r "${GITHUB_WORKSPACE}/dist/${skill_name}.zip" .
             cd -
             
             rm -rf "$temp_dir"

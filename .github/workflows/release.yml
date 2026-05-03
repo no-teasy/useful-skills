@@ -19,11 +19,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Read version from VERSION file
+      - name: Read version and commit hash
         id: version
         run: |
           VERSION=$(cat VERSION)
+          HASH=$(git rev-parse --short HEAD)
+          HASH5=${HASH:0:5}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "hash5=$HASH5" >> $GITHUB_OUTPUT
 
       - name: Create packages
         run: |
@@ -52,8 +55,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}-${{ steps.version.outputs.hash5 }}
+          name: Release v${{ steps.version.outputs.version }}-${{ steps.version.outputs.hash5 }}
           draft: false
           prerelease: false
           generate_release_notes: true
